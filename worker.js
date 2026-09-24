@@ -73,14 +73,22 @@ const seedStudents = [
   ]
 ];
 
-const json = (data, status = 200) => {
+/* ---------------------------------
+   GENEL JSON CEVABI
+--------------------------------- */
+
+function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
       "content-type": "application/json; charset=utf-8"
     }
   });
-};
+}
+
+/* ---------------------------------
+   REQUEST BODY
+--------------------------------- */
 
 async function body(req) {
   try {
@@ -89,6 +97,10 @@ async function body(req) {
     return {};
   }
 }
+
+/* ---------------------------------
+   ADMIN PIN
+--------------------------------- */
 
 function getAdminPin(env) {
   return String(env.ADMIN_PIN || "2468");
@@ -112,7 +124,13 @@ async function ensureSeed(env) {
       return env.ANDAC_DB
         .prepare(`
           INSERT INTO students
-          (name, class_name, motto, photo, target)
+          (
+            name,
+            class_name,
+            motto,
+            photo,
+            target
+          )
           VALUES (?, ?, ?, ?, ?)
         `)
         .bind(
@@ -198,17 +216,18 @@ async function getNotes(env, url, admin) {
 
   const args = [];
 
-  /*
-    Genel kullanıcı sadece onaylanmış
-    yazıları görebilir.
-  */
   if (!admin) {
-    sql += ` AND n.status = 'approved'`;
+    sql += `
+      AND n.status = 'approved'
+    `;
   } else {
     const status = url.searchParams.get("status");
 
     if (status && status !== "all") {
-      sql += ` AND n.status = ?`;
+      sql += `
+        AND n.status = ?
+      `;
+
       args.push(status);
     }
   }
@@ -216,7 +235,10 @@ async function getNotes(env, url, admin) {
   const student = url.searchParams.get("student");
 
   if (student) {
-    sql += ` AND n.student_id = ?`;
+    sql += `
+      AND n.student_id = ?
+    `;
+
     args.push(Number(student));
   }
 
@@ -236,7 +258,9 @@ async function getNotes(env, url, admin) {
     args.push(q, q, q);
   }
 
-  sql += ` ORDER BY n.id DESC`;
+  sql += `
+    ORDER BY n.id DESC
+  `;
 
   const result = await env.ANDAC_DB
     .prepare(sql)
@@ -361,46 +385,55 @@ function makeExcel(rows) {
 
 async function route(req, env) {
   const url = new URL(req.url);
+
   const path = url.pathname;
   const method = req.method;
 
-  /* Sağlık kontrolü */
+  /* ---------------------------------
+     HEALTH
+  --------------------------------- */
+
   if (method === "GET" && path === "/api/health") {
     return json({
       ok: true,
-      app: "andac-defteri"
+      app: "andac-defteri",
+      version: "photo-clean-v4"
     });
   }
 
-  /* Veritabanını hazırla */
+  /* ---------------------------------
+     DATABASE
+  --------------------------------- */
+
   await ensureSeed(env);
 
   /* ---------------------------------
      PUBLIC - ÖĞRENCİLER
   --------------------------------- */
 
-  if (method === "GET" && path === "/api/students") {
-    return json(await getStudents(env));
+  if (
+    method === "GET" &&
+    path === "/api/students"
+  ) {
+    return json(
+      await getStudents(env)
+    );
   }
 
   /* ---------------------------------
-     PUBLIC - ONAYLANMIŞ ANDAÇLAR
+     PUBLIC - ONAYLI ANDAÇLAR
   --------------------------------- */
 
-  if (method === "GET" && path === "/api/notes") {
+  if (
+    method === "GET" &&
+    path === "/api/notes"
+  ) {
     const admin = isAdmin(req, env);
 
-    /*
-      Admin değilse sadece approved döner.
-      Admin ise tüm kayıtları görebilir.
-    */
     if (!admin) {
-      const status = url.searchParams.get("status");
+      const status =
+        url.searchParams.get("status");
 
-      /*
-        Frontend public tarafta zaten
-        ?status=approved gönderiyor.
-      */
       if (status !== "approved") {
         return json(
           {
@@ -412,7 +445,11 @@ async function route(req, env) {
     }
 
     return json(
-      await getNotes(env, url, admin)
+      await getNotes(
+        env,
+        url,
+        admin
+      )
     );
   }
 
@@ -420,10 +457,14 @@ async function route(req, env) {
      PUBLIC - ANDAÇ GÖNDER
   --------------------------------- */
 
-  if (method === "POST" && path === "/api/notes") {
+  if (
+    method === "POST" &&
+    path === "/api/notes"
+  ) {
     const data = await body(req);
 
-    const studentId = Number(data.student_id);
+    const studentId =
+      Number(data.student_id);
 
     const writerName = String(
       data.writer_name ||
@@ -462,7 +503,8 @@ async function route(req, env) {
     if (!content) {
       return json(
         {
-          error: "Andaç yazısı boş bırakılamaz."
+          error:
+            "Andaç yazısı boş bırakılamaz."
         },
         400
       );
@@ -471,7 +513,8 @@ async function route(req, env) {
     if (content.length < 20) {
       return json(
         {
-          error: "Andaç yazısı en az 20 karakter olmalı."
+          error:
+            "Andaç yazısı en az 20 karakter olmalı."
         },
         400
       );
@@ -480,59 +523,65 @@ async function route(req, env) {
     if (content.length > 600) {
       return json(
         {
-          error: "Andaç yazısı en fazla 600 karakter olabilir."
+          error:
+            "Andaç yazısı en fazla 600 karakter olabilir."
         },
         400
       );
     }
 
-    const student = await env.ANDAC_DB
-      .prepare(`
-        SELECT id
-        FROM students
-        WHERE id = ?
-      `)
-      .bind(studentId)
-      .first();
+    const student =
+      await env.ANDAC_DB
+        .prepare(`
+          SELECT id
+          FROM students
+          WHERE id = ?
+        `)
+        .bind(studentId)
+        .first();
 
     if (!student) {
       return json(
         {
-          error: "Öğrenci bulunamadı."
+          error:
+            "Öğrenci bulunamadı."
         },
         404
       );
     }
 
-    const createdAt = new Date().toISOString();
+    const createdAt =
+      new Date().toISOString();
 
-    const result = await env.ANDAC_DB
-      .prepare(`
-        INSERT INTO notes
-        (
-          student_id,
-          writer_name,
+    const result =
+      await env.ANDAC_DB
+        .prepare(`
+          INSERT INTO notes
+          (
+            student_id,
+            writer_name,
+            relationship,
+            content,
+            status,
+            created_at
+          )
+          VALUES (?, ?, ?, ?, ?, ?)
+        `)
+        .bind(
+          studentId,
+          writerName,
           relationship,
           content,
-          status,
-          created_at
+          "pending",
+          createdAt
         )
-        VALUES (?, ?, ?, ?, ?, ?)
-      `)
-      .bind(
-        studentId,
-        writerName,
-        relationship,
-        content,
-        "pending",
-        createdAt
-      )
-      .run();
+        .run();
 
     return json({
       ok: true,
       id: result.meta.last_row_id,
-      message: "Andaçınız başarıyla gönderildi."
+      message:
+        "Andaçınız başarıyla gönderildi."
     });
   }
 
@@ -540,12 +589,19 @@ async function route(req, env) {
      ADMIN LOGIN
   --------------------------------- */
 
-  if (method === "POST" && path === "/api/admin/login") {
+  if (
+    method === "POST" &&
+    path === "/api/admin/login"
+  ) {
     const data = await body(req);
 
-    const pin = String(data.pin || "");
+    const pin = String(
+      data.pin || ""
+    );
 
-    if (pin === getAdminPin(env)) {
+    if (
+      pin === getAdminPin(env)
+    ) {
       return json({
         ok: true
       });
@@ -563,7 +619,10 @@ async function route(req, env) {
      ADMIN KONTROLÜ
   --------------------------------- */
 
-  if (path.startsWith("/api/") && !isAdmin(req, env)) {
+  if (
+    path.startsWith("/api/") &&
+    !isAdmin(req, env)
+  ) {
     return json(
       {
         error: "Yetkisiz"
@@ -573,7 +632,7 @@ async function route(req, env) {
   }
 
   /* ---------------------------------
-     ADMIN - ANDAÇ DURUMU DEĞİŞTİR
+     ADMIN - ANDAÇ DURUMU
   --------------------------------- */
 
   if (
@@ -591,13 +650,16 @@ async function route(req, env) {
     );
 
     if (
-      !["pending", "approved", "rejected"].includes(
-        status
-      )
+      ![
+        "pending",
+        "approved",
+        "rejected"
+      ].includes(status)
     ) {
       return json(
         {
-          error: "Geçersiz durum."
+          error:
+            "Geçersiz durum."
         },
         400
       );
@@ -666,16 +728,9 @@ async function route(req, env) {
       data.motto || ""
     ).trim();
 
-    /*
-      photo_url sadece dışarıdan gelen eski
-      form verisi için alternatif isimdir.
-      D1 sütunu kesinlikle PHOTO'dur.
-    */
+    /* SADECE PHOTO */
     const photo = String(
-      data.photo ||
-      data.photo_url ||
-      data.photoUrl ||
-      ""
+      data.photo || ""
     ).trim();
 
     const target = Number(
@@ -685,7 +740,8 @@ async function route(req, env) {
     if (!name) {
       return json(
         {
-          error: "Öğrenci adı gerekli."
+          error:
+            "Öğrenci adı gerekli."
         },
         400
       );
@@ -694,32 +750,34 @@ async function route(req, env) {
     if (!className) {
       return json(
         {
-          error: "Sınıf gerekli."
+          error:
+            "Sınıf gerekli."
         },
         400
       );
     }
 
-    const result = await env.ANDAC_DB
-      .prepare(`
-        INSERT INTO students
-        (
+    const result =
+      await env.ANDAC_DB
+        .prepare(`
+          INSERT INTO students
+          (
+            name,
+            class_name,
+            motto,
+            photo,
+            target
+          )
+          VALUES (?, ?, ?, ?, ?)
+        `)
+        .bind(
           name,
-          class_name,
+          className,
           motto,
           photo,
           target
         )
-        VALUES (?, ?, ?, ?, ?)
-      `)
-      .bind(
-        name,
-        className,
-        motto,
-        photo,
-        target
-      )
-      .run();
+        .run();
 
     return json({
       ok: true,
@@ -755,11 +813,9 @@ async function route(req, env) {
       data.motto || ""
     ).trim();
 
+    /* SADECE PHOTO */
     const photo = String(
-      data.photo ||
-      data.photo_url ||
-      data.photoUrl ||
-      ""
+      data.photo || ""
     ).trim();
 
     const target = Number(
@@ -769,7 +825,8 @@ async function route(req, env) {
     if (!name || !className) {
       return json(
         {
-          error: "Ad ve sınıf zorunlu."
+          error:
+            "Ad ve sınıf zorunlu."
         },
         400
       );
@@ -813,11 +870,6 @@ async function route(req, env) {
       path.split("/").pop()
     );
 
-    /*
-      Önce öğrencinin andaçlarını siliyoruz.
-      Böylece foreign key problemi oluşmaz.
-    */
-
     await env.ANDAC_DB
       .prepare(`
         DELETE FROM notes
@@ -847,11 +899,12 @@ async function route(req, env) {
     method === "GET" &&
     path === "/api/export.csv"
   ) {
-    const rows = await getNotes(
-      env,
-      url,
-      true
-    );
+    const rows =
+      await getNotes(
+        env,
+        url,
+        true
+      );
 
     return new Response(
       makeCsv(rows),
@@ -875,11 +928,12 @@ async function route(req, env) {
     method === "GET" &&
     path === "/api/export.xls"
   ) {
-    const rows = await getNotes(
-      env,
-      url,
-      true
-    );
+    const rows =
+      await getNotes(
+        env,
+        url,
+        true
+      );
 
     return new Response(
       makeExcel(rows),
@@ -909,16 +963,26 @@ async function route(req, env) {
 export default {
   async fetch(req, env, ctx) {
     try {
-      return await route(req, env);
+      return await route(
+        req,
+        env
+      );
     } catch (error) {
-      console.error("WORKER ERROR:", error);
+      console.error(
+        "WORKER ERROR:",
+        error
+      );
 
       return json(
         {
-          error: "Sunucu hatası",
-          detail: String(
-            error?.message || error
-          )
+          error:
+            "Sunucu hatası",
+
+          detail:
+            String(
+              error?.message ||
+              error
+            )
         },
         500
       );
