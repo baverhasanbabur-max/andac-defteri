@@ -8,5 +8,5 @@ directory = "./public"
 [[d1_databases]]
 binding = "ANDAC_DB"
 database_name = "andac-defteri-db"
-database_id = "aa471b26-0f31-447f-88d4-dc7db8337f26"
+database_id = "5e92b0df-7034-474a-848b-673497f25360"
 migrations_dir = "migrations"
