@@ -4,32 +4,44 @@ const seedStudents = [
   {
     name: "Ayşe Yılmaz",
     class_name: "12-A",
-    photo_url: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=500"
+    motto: "Birlikte geçen yıllar unutulmaz.",
+    photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=600",
+    target: 5
   },
   {
     name: "Mehmet Demir",
     class_name: "12-A",
-    photo_url: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=500"
+    motto: "Güzel anılar biriktirdik.",
+    photo: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=600",
+    target: 5
   },
   {
     name: "Zeynep Kaya",
     class_name: "12-B",
-    photo_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500"
+    motto: "Her günün ayrı bir hikâyesi vardı.",
+    photo: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600",
+    target: 5
   },
   {
     name: "Ali Çelik",
     class_name: "12-B",
-    photo_url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500"
+    motto: "Son zil çaldı ama anılar kalıyor.",
+    photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600",
+    target: 5
   },
   {
     name: "Elif Şahin",
     class_name: "12-C",
-    photo_url: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=500"
+    motto: "Birlikte gülüp birlikte büyüdük.",
+    photo: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=600",
+    target: 5
   },
   {
     name: "Burak Arslan",
     class_name: "12-C",
-    photo_url: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=500"
+    motto: "Bu sınıfın hikâyesi burada bitmiyor.",
+    photo: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=600",
+    target: 5
   }
 ];
 
@@ -51,116 +63,8 @@ async function body(req) {
   }
 }
 
-function auth(req) {
+function isAdmin(req) {
   return req.headers.get("x-admin-pin") === ADMIN_PIN;
-}
-
-function csvEscape(value) {
-  const s = String(value ?? "");
-  return `"${s.replace(/"/g, '""')}"`;
-}
-
-function csv(rows) {
-  const headers = [
-    "ID",
-    "Öğrenci",
-    "Sınıf",
-    "Yazan",
-    "Yakınlık",
-    "Mesaj",
-    "Durum",
-    "Tarih"
-  ];
-
-  const lines = [
-    headers.map(csvEscape).join(";")
-  ];
-
-  for (const row of rows) {
-    lines.push([
-      row.id,
-      row.student_name,
-      row.class_name,
-      row.author_name,
-      row.relationship,
-      row.message,
-      row.status,
-      row.created_at
-    ].map(csvEscape).join(";"));
-  }
-
-  return "\uFEFF" + lines.join("\r\n");
-}
-
-function xlsEscape(value) {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-function xls(rows) {
-  const headers = [
-    "ID",
-    "Öğrenci",
-    "Sınıf",
-    "Yazan",
-    "Yakınlık",
-    "Mesaj",
-    "Durum",
-    "Tarih"
-  ];
-
-  let html = `
-<?xml version="1.0"?>
-<?mso-application progid="Excel.Sheet"?>
-<Workbook
- xmlns="urn:schemas-microsoft-com:office:spreadsheet"
- xmlns:o="urn:schemas-microsoft-com:office:office"
- xmlns:x="urn:schemas-microsoft-com:office:excel"
- xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
-
-<Worksheet ss:Name="Andaçlar">
-<Table>
-`;
-
-  html += "<Row>";
-
-  for (const header of headers) {
-    html += `<Cell><Data ss:Type="String">${xlsEscape(header)}</Data></Cell>`;
-  }
-
-  html += "</Row>";
-
-  for (const row of rows) {
-    html += "<Row>";
-
-    const values = [
-      row.id,
-      row.student_name,
-      row.class_name,
-      row.author_name,
-      row.relationship,
-      row.message,
-      row.status,
-      row.created_at
-    ];
-
-    for (const value of values) {
-      html += `<Cell><Data ss:Type="String">${xlsEscape(value)}</Data></Cell>`;
-    }
-
-    html += "</Row>";
-  }
-
-  html += `
-</Table>
-</Worksheet>
-</Workbook>
-`;
-
-  return html;
 }
 
 async function ensureSeed(env) {
@@ -176,13 +80,15 @@ async function ensureSeed(env) {
     await env.ANDAC_DB
       .prepare(`
         INSERT INTO students
-        (name, class_name, photo_url)
-        VALUES (?, ?, ?)
+        (name, class_name, motto, photo, target)
+        VALUES (?, ?, ?, ?, ?)
       `)
       .bind(
         student.name,
         student.class_name,
-        student.photo_url
+        student.motto,
+        student.photo,
+        student.target
       )
       .run();
   }
@@ -192,13 +98,29 @@ async function getStudents(env) {
   const result = await env.ANDAC_DB
     .prepare(`
       SELECT
-        id,
-        name,
-        class_name,
-        photo_url,
-        created_at
-      FROM students
-      ORDER BY class_name ASC, name ASC
+        s.id,
+        s.name,
+        s.class_name,
+        s.motto,
+        s.photo,
+        s.target,
+        COUNT(
+          CASE WHEN n.status = 'approved'
+          THEN 1 END
+        ) AS approved_count
+      FROM students s
+      LEFT JOIN notes n
+        ON n.student_id = s.id
+      GROUP BY
+        s.id,
+        s.name,
+        s.class_name,
+        s.motto,
+        s.photo,
+        s.target
+      ORDER BY
+        s.class_name ASC,
+        s.name ASC
     `)
     .all();
 
@@ -215,12 +137,11 @@ async function getNotes(env, url, admin = false) {
       n.student_id,
       s.name AS student_name,
       s.class_name,
-      n.author_name,
+      n.writer_name,
       n.relationship,
-      n.message,
+      n.content,
       n.status,
-      n.created_at,
-      n.updated_at
+      n.created_at
     FROM notes n
     JOIN students s
       ON s.id = n.student_id
@@ -229,34 +150,19 @@ async function getNotes(env, url, admin = false) {
   const conditions = [];
   const params = [];
 
-  /*
-   * PUBLIC:
-   * Sadece belirli öğrencinin approved andaçlarını göster.
-   */
   if (!admin) {
     conditions.push("n.status = ?");
     params.push("approved");
-
-    if (studentId) {
-      conditions.push("n.student_id = ?");
-      params.push(studentId);
-    }
   }
 
-  /*
-   * ADMIN:
-   * İsterse öğrenci ve durum filtreleyebilir.
-   */
-  if (admin) {
-    if (studentId) {
-      conditions.push("n.student_id = ?");
-      params.push(studentId);
-    }
+  if (studentId) {
+    conditions.push("n.student_id = ?");
+    params.push(Number(studentId));
+  }
 
-    if (status) {
-      conditions.push("n.status = ?");
-      params.push(status);
-    }
+  if (admin && status && status !== "all") {
+    conditions.push("n.status = ?");
+    params.push(status);
   }
 
   if (conditions.length) {
@@ -273,13 +179,126 @@ async function getNotes(env, url, admin = false) {
   return result.results || [];
 }
 
+function csvEscape(value) {
+  const text = String(value ?? "");
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function createCSV(rows) {
+  const headers = [
+    "ID",
+    "Öğrenci",
+    "Sınıf",
+    "Yazan",
+    "İlişki",
+    "Andaç Yazısı",
+    "Durum",
+    "Tarih"
+  ];
+
+  const output = [
+    headers.map(csvEscape).join(";")
+  ];
+
+  for (const row of rows) {
+    output.push([
+      row.id,
+      row.student_name,
+      row.class_name,
+      row.writer_name,
+      row.relationship,
+      row.content,
+      row.status,
+      row.created_at
+    ].map(csvEscape).join(";"));
+  }
+
+  return "\uFEFF" + output.join("\r\n");
+}
+
+function xmlEscape(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function createXLS(rows) {
+  const headers = [
+    "ID",
+    "Öğrenci",
+    "Sınıf",
+    "Yazan",
+    "İlişki",
+    "Andaç Yazısı",
+    "Durum",
+    "Tarih"
+  ];
+
+  let output = `<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook
+ xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+
+<Worksheet ss:Name="Andaçlar">
+<Table>
+`;
+
+  output += "<Row>";
+
+  for (const header of headers) {
+    output += `
+<Cell>
+<Data ss:Type="String">${xmlEscape(header)}</Data>
+</Cell>`;
+  }
+
+  output += "</Row>";
+
+  for (const row of rows) {
+    output += "<Row>";
+
+    const values = [
+      row.id,
+      row.student_name,
+      row.class_name,
+      row.writer_name,
+      row.relationship,
+      row.content,
+      row.status,
+      row.created_at
+    ];
+
+    for (const value of values) {
+      output += `
+<Cell>
+<Data ss:Type="String">${xmlEscape(value)}</Data>
+</Cell>`;
+    }
+
+    output += "</Row>";
+  }
+
+  output += `
+</Table>
+</Worksheet>
+</Workbook>`;
+
+  return output;
+}
+
 async function route(req, env) {
   const url = new URL(req.url);
   const path = url.pathname;
   const method = req.method;
 
   /*
-   * HEALTH
+   * Sağlık kontrolü
    */
   if (method === "GET" && path === "/api/health") {
     return json({
@@ -289,37 +308,60 @@ async function route(req, env) {
   }
 
   /*
-   * D1 tablolarının seed edilmesi
+   * İlk açılışta örnek öğrencileri ekle
    */
   await ensureSeed(env);
 
   /*
-   * PUBLIC STUDENTS
+   * ÖĞRENCİLER
    */
   if (method === "GET" && path === "/api/students") {
     return json(await getStudents(env));
   }
 
   /*
-   * PUBLIC APPROVED NOTES
+   * NOTLAR
    *
-   * Örneğin:
-   * /api/notes?student=1
+   * Normal kullanıcı:
+   * sadece approved kayıtları görür.
+   *
+   * Admin:
+   * tüm kayıtları görür.
    */
   if (method === "GET" && path === "/api/notes") {
-    return json(await getNotes(env, url, false));
+    const admin = isAdmin(req);
+
+    return json(
+      await getNotes(env, url, admin)
+    );
   }
 
   /*
-   * NEW NOTE
+   * YENİ ANDAÇ
    */
   if (method === "POST" && path === "/api/notes") {
     const data = await body(req);
 
     const studentId = Number(data.student_id);
-    const authorName = String(data.author_name || "").trim();
-    const relationship = String(data.relationship || "").trim();
-    const message = String(data.message || "").trim();
+
+    /*
+     * Frontend'in eski ve yeni isimlerini de destekle
+     */
+    const writerName = String(
+      data.writer_name ||
+      data.author_name ||
+      ""
+    ).trim();
+
+    const relationship = String(
+      data.relationship || ""
+    ).trim();
+
+    const content = String(
+      data.content ||
+      data.message ||
+      ""
+    ).trim();
 
     if (!studentId) {
       return json({
@@ -327,25 +369,25 @@ async function route(req, env) {
       }, 400);
     }
 
-    if (!authorName) {
+    if (!writerName) {
       return json({
-        error: "Ad soyad gerekli."
+        error: "Adını yazmalısın."
       }, 400);
     }
 
     if (!relationship) {
       return json({
-        error: "Yakınlık / ilişki bilgisi gerekli."
+        error: "İlişki bilgisi gerekli."
       }, 400);
     }
 
-    if (message.length < 20) {
+    if (content.length < 20) {
       return json({
         error: "Andaç yazısı en az 20 karakter olmalıdır."
       }, 400);
     }
 
-    if (message.length > 600) {
+    if (content.length > 600) {
       return json({
         error: "Andaç yazısı en fazla 600 karakter olabilir."
       }, 400);
@@ -371,19 +413,19 @@ async function route(req, env) {
         INSERT INTO notes
         (
           student_id,
-          author_name,
+          writer_name,
           relationship,
-          message,
-          status
+          content,
+          status,
+          created_at
         )
-        VALUES (?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, 'pending', CURRENT_TIMESTAMP)
       `)
       .bind(
         studentId,
-        authorName,
+        writerName,
         relationship,
-        message,
-        "pending"
+        content
       )
       .run();
 
@@ -395,14 +437,19 @@ async function route(req, env) {
   }
 
   /*
-   * ADMIN LOGIN
+   * FOTOĞRAFÇI GİRİŞİ
    *
-   * PIN: 2468
+   * PIN = 2468
    */
-  if (method === "POST" && path === "/api/admin/login") {
+  if (
+    method === "POST" &&
+    path === "/api/admin/login"
+  ) {
     const data = await body(req);
 
-    const pin = String(data.pin || "").trim();
+    const pin = String(
+      data.pin || ""
+    ).trim();
 
     if (pin === ADMIN_PIN) {
       return json({
@@ -417,36 +464,24 @@ async function route(req, env) {
   }
 
   /*
-   * Bundan sonraki tüm /api admin işlemleri PIN ister.
+   * BURADAN SONRASI ADMIN
    */
-  if (path.startsWith("/api/") && !auth(req)) {
+  if (path.startsWith("/api/") && !isAdmin(req)) {
     return json({
       error: "Yetkisiz"
     }, 401);
   }
 
   /*
-   * ADMIN - TÜM NOTLAR
-   */
-  if (method === "GET" && path === "/api/admin/notes") {
-    return json(await getNotes(env, url, true));
-  }
-
-  /*
-   * ADMIN - NOTLARI /api/notes üzerinden de getir
-   */
-  if (method === "GET" && path === "/api/admin/all-notes") {
-    return json(await getNotes(env, url, true));
-  }
-
-  /*
-   * ADMIN - NOTE UPDATE
+   * ANDAÇ DURUMU DEĞİŞTİR
    */
   if (
     method === "PATCH" &&
     path.startsWith("/api/notes/")
   ) {
-    const id = Number(path.split("/").pop());
+    const id = Number(
+      path.split("/").pop()
+    );
 
     if (!id) {
       return json({
@@ -456,21 +491,53 @@ async function route(req, env) {
 
     const data = await body(req);
 
-    const allowedFields = [
-      "author_name",
-      "relationship",
-      "message",
-      "status"
-    ];
-
     const updates = [];
     const values = [];
 
-    for (const field of allowedFields) {
-      if (data[field] !== undefined) {
-        updates.push(`${field} = ?`);
-        values.push(data[field]);
+    if (data.writer_name !== undefined) {
+      updates.push("writer_name = ?");
+      values.push(
+        String(data.writer_name).trim()
+      );
+    }
+
+    if (data.relationship !== undefined) {
+      updates.push("relationship = ?");
+      values.push(
+        String(data.relationship).trim()
+      );
+    }
+
+    if (data.content !== undefined) {
+      const content = String(data.content).trim();
+
+      if (content.length > 600) {
+        return json({
+          error: "Andaç yazısı en fazla 600 karakter olabilir."
+        }, 400);
       }
+
+      updates.push("content = ?");
+      values.push(content);
+    }
+
+    if (data.status !== undefined) {
+      const status = String(data.status);
+
+      if (
+        ![
+          "pending",
+          "approved",
+          "rejected"
+        ].includes(status)
+      ) {
+        return json({
+          error: "Geçersiz durum."
+        }, 400);
+      }
+
+      updates.push("status = ?");
+      values.push(status);
     }
 
     if (!updates.length) {
@@ -478,26 +545,6 @@ async function route(req, env) {
         error: "Güncellenecek alan yok."
       }, 400);
     }
-
-    if (
-      data.message !== undefined &&
-      String(data.message).length > 600
-    ) {
-      return json({
-        error: "Andaç yazısı en fazla 600 karakter olabilir."
-      }, 400);
-    }
-
-    if (
-      data.status !== undefined &&
-      !["pending", "approved", "rejected"].includes(data.status)
-    ) {
-      return json({
-        error: "Geçersiz durum."
-      }, 400);
-    }
-
-    updates.push("updated_at = CURRENT_TIMESTAMP");
 
     values.push(id);
 
@@ -522,13 +569,15 @@ async function route(req, env) {
   }
 
   /*
-   * ADMIN - NOTE DELETE
+   * ANDAÇ SİL
    */
   if (
     method === "DELETE" &&
     path.startsWith("/api/notes/")
   ) {
-    const id = Number(path.split("/").pop());
+    const id = Number(
+      path.split("/").pop()
+    );
 
     if (!id) {
       return json({
@@ -556,7 +605,7 @@ async function route(req, env) {
   }
 
   /*
-   * ADMIN - STUDENT ADD
+   * YENİ ÖĞRENCİ
    */
   if (
     method === "POST" &&
@@ -564,14 +613,30 @@ async function route(req, env) {
   ) {
     const data = await body(req);
 
-    const name = String(data.name || "").trim();
-    const className = String(
-      data.class_name || data.className || ""
+    const name = String(
+      data.name || ""
     ).trim();
 
-    const photoUrl = String(
-      data.photo_url || data.photoUrl || ""
+    const className = String(
+      data.class_name ||
+      data.className ||
+      ""
     ).trim();
+
+    const motto = String(
+      data.motto || ""
+    ).trim();
+
+    const photo = String(
+      data.photo ||
+      data.photo_url ||
+      data.photoUrl ||
+      ""
+    ).trim();
+
+    const target = Number(
+      data.target || 5
+    );
 
     if (!name) {
       return json({
@@ -591,14 +656,18 @@ async function route(req, env) {
         (
           name,
           class_name,
-          photo_url
+          motto,
+          photo,
+          target
         )
-        VALUES (?, ?, ?)
+        VALUES (?, ?, ?, ?, ?)
       `)
       .bind(
         name,
         className,
-        photoUrl
+        motto,
+        photo,
+        target
       )
       .run();
 
@@ -609,13 +678,15 @@ async function route(req, env) {
   }
 
   /*
-   * ADMIN - STUDENT DELETE
+   * ÖĞRENCİ SİL
    */
   if (
     method === "DELETE" &&
     path.startsWith("/api/students/")
   ) {
-    const id = Number(path.split("/").pop());
+    const id = Number(
+      path.split("/").pop()
+    );
 
     if (!id) {
       return json({
@@ -651,7 +722,7 @@ async function route(req, env) {
   }
 
   /*
-   * ADMIN - CSV EXPORT
+   * CSV
    */
   if (
     method === "GET" &&
@@ -659,24 +730,29 @@ async function route(req, env) {
   ) {
     const rows = await getNotes(
       env,
-      new URL(req.url),
+      url,
       true
     );
 
-    return new Response(csv(rows), {
-      headers: {
-        "content-type": "text/csv; charset=utf-8",
-        "content-disposition":
-          'attachment; filename="andaclar.csv"',
-        "cache-control": "no-store"
+    return new Response(
+      createCSV(rows),
+      {
+        headers: {
+          "content-type":
+            "text/csv; charset=utf-8",
+
+          "content-disposition":
+            'attachment; filename="andaclar.csv"',
+
+          "cache-control":
+            "no-store"
+        }
       }
-    });
+    );
   }
 
   /*
-   * ADMIN - EXCEL EXPORT
-   *
-   * Excel SpreadsheetML formatı.
+   * EXCEL
    */
   if (
     method === "GET" &&
@@ -684,23 +760,29 @@ async function route(req, env) {
   ) {
     const rows = await getNotes(
       env,
-      new URL(req.url),
+      url,
       true
     );
 
-    return new Response(xls(rows), {
-      headers: {
-        "content-type":
-          "application/vnd.ms-excel; charset=utf-8",
-        "content-disposition":
-          'attachment; filename="andaclar.xls"',
-        "cache-control": "no-store"
+    return new Response(
+      createXLS(rows),
+      {
+        headers: {
+          "content-type":
+            "application/vnd.ms-excel; charset=utf-8",
+
+          "content-disposition":
+            'attachment; filename="andaclar.xls"',
+
+          "cache-control":
+            "no-store"
+        }
       }
-    });
+    );
   }
 
   /*
-   * Frontend
+   * FRONTEND
    */
   return env.ASSETS.fetch(req);
 }
@@ -710,7 +792,10 @@ export default {
     try {
       return await route(req, env);
     } catch (error) {
-      console.error("SERVER ERROR:", error);
+      console.error(
+        "ANDAÇ DEFTERİ SERVER ERROR:",
+        error
+      );
 
       return json({
         error: "Sunucu hatası",
