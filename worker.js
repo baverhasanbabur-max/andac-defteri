@@ -1,59 +1,86 @@
-const ADMIN_PIN = "2468";
-
 const seedStudents = [
-  {
-    name: "Ayşe Yılmaz",
-    class_name: "12-A",
-    motto: "Birlikte geçen yıllar unutulmaz.",
-    photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=600",
-    target: 5
-  },
-  {
-    name: "Mehmet Demir",
-    class_name: "12-A",
-    motto: "Güzel anılar biriktirdik.",
-    photo: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=600",
-    target: 5
-  },
-  {
-    name: "Zeynep Kaya",
-    class_name: "12-B",
-    motto: "Her günün ayrı bir hikâyesi vardı.",
-    photo: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600",
-    target: 5
-  },
-  {
-    name: "Ali Çelik",
-    class_name: "12-B",
-    motto: "Son zil çaldı ama anılar kalıyor.",
-    photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600",
-    target: 5
-  },
-  {
-    name: "Elif Şahin",
-    class_name: "12-C",
-    motto: "Birlikte gülüp birlikte büyüdük.",
-    photo: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=600",
-    target: 5
-  },
-  {
-    name: "Burak Arslan",
-    class_name: "12-C",
-    motto: "Bu sınıfın hikâyesi burada bitmiyor.",
-    photo: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=600",
-    target: 5
-  }
+  [
+    "Ada Yılmaz",
+    "12-A",
+    "Birlikte daha güzel.",
+    "https://images.unsplash.com/photo-1544005313-94ddf028a43e?w=700"
+  ],
+  [
+    "Arda Demir",
+    "12-A",
+    "Anı biriktir.",
+    "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=700"
+  ],
+  [
+    "Ece Kaya",
+    "12-A",
+    "Gülümsemeyi unutma.",
+    "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=700"
+  ],
+  [
+    "Mert Şahin",
+    "12-A",
+    "İyi ki aynı sınıftaydık.",
+    "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=700"
+  ],
+  [
+    "Elif Aydın",
+    "12-B",
+    "Her şey güzel olacak.",
+    "https://images.unsplash.com/photo-1544725176-7c40e5a71c5e?w=700"
+  ],
+  [
+    "Can Eren",
+    "12-B",
+    "Yolun açık olsun.",
+    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=700"
+  ],
+  [
+    "Zeynep Arslan",
+    "12-B",
+    "Bu yılları unutma.",
+    "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=700"
+  ],
+  [
+    "Bora Çelik",
+    "12-B",
+    "Hep gül.",
+    "https://images.unsplash.com/photo-1519345182560-3f2917c472ef?w=700"
+  ],
+  [
+    "Deniz Koç",
+    "12-C",
+    "Güzel anılar bizimle.",
+    "https://images.unsplash.com/photo-1504593811423-6dd665756598?w=700"
+  ],
+  [
+    "Nazlı Öz",
+    "12-C",
+    "İyi ki varsın.",
+    "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=700"
+  ],
+  [
+    "Emir Aksoy",
+    "12-C",
+    "Yeni başlangıçlara.",
+    "https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?w=700"
+  ],
+  [
+    "Selin Tunç",
+    "12-C",
+    "Seni hep hatırlayacağız.",
+    "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=700"
+  ]
 ];
 
-function json(data, status = 200) {
+const json = (data, status = 200) => {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
-      "content-type": "application/json; charset=utf-8",
-      "cache-control": "no-store"
+      "content-type": "application/json; charset=utf-8"
     }
   });
-}
+};
 
 async function body(req) {
   try {
@@ -63,36 +90,47 @@ async function body(req) {
   }
 }
 
-function isAdmin(req) {
-  return req.headers.get("x-admin-pin") === ADMIN_PIN;
+function getAdminPin(env) {
+  return String(env.ADMIN_PIN || "2468");
 }
+
+function isAdmin(req, env) {
+  return req.headers.get("x-admin-pin") === getAdminPin(env);
+}
+
+/* ---------------------------------
+   VERİTABANI SEED
+--------------------------------- */
 
 async function ensureSeed(env) {
   const result = await env.ANDAC_DB
-    .prepare("SELECT COUNT(*) AS count FROM students")
+    .prepare("SELECT COUNT(*) AS c FROM students")
     .first();
 
-  if (Number(result?.count || 0) > 0) {
-    return;
-  }
+  if (Number(result?.c || 0) === 0) {
+    const statements = seedStudents.map((student) => {
+      return env.ANDAC_DB
+        .prepare(`
+          INSERT INTO students
+          (name, class_name, motto, photo, target)
+          VALUES (?, ?, ?, ?, ?)
+        `)
+        .bind(
+          student[0],
+          student[1],
+          student[2],
+          student[3],
+          5
+        );
+    });
 
-  for (const student of seedStudents) {
-    await env.ANDAC_DB
-      .prepare(`
-        INSERT INTO students
-        (name, class_name, motto, photo, target)
-        VALUES (?, ?, ?, ?, ?)
-      `)
-      .bind(
-        student.name,
-        student.class_name,
-        student.motto,
-        student.photo,
-        student.target
-      )
-      .run();
+    await env.ANDAC_DB.batch(statements);
   }
 }
+
+/* ---------------------------------
+   ÖĞRENCİLER
+--------------------------------- */
 
 async function getStudents(env) {
   const result = await env.ANDAC_DB
@@ -104,13 +142,21 @@ async function getStudents(env) {
         s.motto,
         s.photo,
         s.target,
+
         COUNT(
-          CASE WHEN n.status = 'approved'
-          THEN 1 END
-        ) AS approved_count
+          CASE
+            WHEN n.status = 'approved'
+            THEN 1
+          END
+        ) AS approved_count,
+
+        COUNT(n.id) AS total_notes
+
       FROM students s
+
       LEFT JOIN notes n
         ON n.student_id = s.id
+
       GROUP BY
         s.id,
         s.name,
@@ -118,6 +164,7 @@ async function getStudents(env) {
         s.motto,
         s.photo,
         s.target
+
       ORDER BY
         s.class_name ASC,
         s.name ASC
@@ -127,161 +174,177 @@ async function getStudents(env) {
   return result.results || [];
 }
 
-async function getNotes(env, url, admin = false) {
-  const studentId = url.searchParams.get("student");
-  const status = url.searchParams.get("status");
+/* ---------------------------------
+   ANDAÇLAR
+--------------------------------- */
 
+async function getNotes(env, url, admin) {
   let sql = `
     SELECT
       n.id,
       n.student_id,
-      s.name AS student_name,
-      s.class_name,
       n.writer_name,
       n.relationship,
       n.content,
       n.status,
-      n.created_at
+      n.created_at,
+      s.name AS student_name,
+      s.class_name
     FROM notes n
     JOIN students s
       ON s.id = n.student_id
+    WHERE 1 = 1
   `;
 
-  const conditions = [];
-  const params = [];
+  const args = [];
 
+  /*
+    Genel kullanıcı sadece onaylanmış
+    yazıları görebilir.
+  */
   if (!admin) {
-    conditions.push("n.status = ?");
-    params.push("approved");
+    sql += ` AND n.status = 'approved'`;
+  } else {
+    const status = url.searchParams.get("status");
+
+    if (status && status !== "all") {
+      sql += ` AND n.status = ?`;
+      args.push(status);
+    }
   }
 
-  if (studentId) {
-    conditions.push("n.student_id = ?");
-    params.push(Number(studentId));
+  const student = url.searchParams.get("student");
+
+  if (student) {
+    sql += ` AND n.student_id = ?`;
+    args.push(Number(student));
   }
 
-  if (admin && status && status !== "all") {
-    conditions.push("n.status = ?");
-    params.push(status);
+  const search = url.searchParams.get("search");
+
+  if (search) {
+    sql += `
+      AND (
+        lower(s.name) LIKE lower(?)
+        OR lower(n.writer_name) LIKE lower(?)
+        OR lower(n.content) LIKE lower(?)
+      )
+    `;
+
+    const q = `%${search}%`;
+
+    args.push(q, q, q);
   }
 
-  if (conditions.length) {
-    sql += " WHERE " + conditions.join(" AND ");
-  }
-
-  sql += " ORDER BY n.created_at DESC";
+  sql += ` ORDER BY n.id DESC`;
 
   const result = await env.ANDAC_DB
     .prepare(sql)
-    .bind(...params)
+    .bind(...args)
     .all();
 
   return result.results || [];
 }
 
-function csvEscape(value) {
-  const text = String(value ?? "");
-  return `"${text.replace(/"/g, '""')}"`;
-}
+/* ---------------------------------
+   CSV
+--------------------------------- */
 
-function createCSV(rows) {
+function makeCsv(rows) {
   const headers = [
-    "ID",
+    "Tarih",
     "Öğrenci",
     "Sınıf",
-    "Yazan",
+    "Yazar",
     "İlişki",
-    "Andaç Yazısı",
-    "Durum",
-    "Tarih"
+    "Yazı",
+    "Durum"
   ];
 
-  const output = [
-    headers.map(csvEscape).join(";")
-  ];
+  const values = rows.map((note) => [
+    note.created_at,
+    note.student_name,
+    note.class_name,
+    note.writer_name,
+    note.relationship,
+    note.content,
+    note.status
+  ]);
 
-  for (const row of rows) {
-    output.push([
-      row.id,
-      row.student_name,
-      row.class_name,
-      row.writer_name,
-      row.relationship,
-      row.content,
-      row.status,
-      row.created_at
-    ].map(csvEscape).join(";"));
-  }
+  const quote = (value) => {
+    return `"${String(value ?? "").replaceAll('"', '""')}"`;
+  };
 
-  return "\uFEFF" + output.join("\r\n");
+  return (
+    "\ufeff" +
+    [headers, ...values]
+      .map((row) => row.map(quote).join(","))
+      .join("\r\n")
+  );
 }
 
-function xmlEscape(value) {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
-}
+/* ---------------------------------
+   EXCEL
+--------------------------------- */
 
-function createXLS(rows) {
+function makeExcel(rows) {
   const headers = [
-    "ID",
+    "Tarih",
     "Öğrenci",
     "Sınıf",
-    "Yazan",
+    "Yazar",
     "İlişki",
-    "Andaç Yazısı",
-    "Durum",
-    "Tarih"
+    "Yazı",
+    "Durum"
   ];
+
+  const escapeXml = (value) => {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;");
+  };
 
   let output = `<?xml version="1.0"?>
-<?mso-application progid="Excel.Sheet"?>
 <Workbook
- xmlns="urn:schemas-microsoft-com:office:spreadsheet"
- xmlns:o="urn:schemas-microsoft-com:office:office"
- xmlns:x="urn:schemas-microsoft-com:office:excel"
- xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+  xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+  xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
 
-<Worksheet ss:Name="Andaçlar">
+<Worksheet ss:Name="Andaclar">
 <Table>
-`;
+<Row>`;
 
-  output += "<Row>";
+  output += headers
+    .map(
+      (header) =>
+        `<Cell><Data ss:Type="String">${escapeXml(header)}</Data></Cell>`
+    )
+    .join("");
 
-  for (const header of headers) {
-    output += `
-<Cell>
-<Data ss:Type="String">${xmlEscape(header)}</Data>
-</Cell>`;
-  }
+  output += `</Row>`;
 
-  output += "</Row>";
-
-  for (const row of rows) {
-    output += "<Row>";
-
+  for (const note of rows) {
     const values = [
-      row.id,
-      row.student_name,
-      row.class_name,
-      row.writer_name,
-      row.relationship,
-      row.content,
-      row.status,
-      row.created_at
+      note.created_at,
+      note.student_name,
+      note.class_name,
+      note.writer_name,
+      note.relationship,
+      note.content,
+      note.status
     ];
 
-    for (const value of values) {
-      output += `
-<Cell>
-<Data ss:Type="String">${xmlEscape(value)}</Data>
-</Cell>`;
-    }
+    output += `<Row>`;
 
-    output += "</Row>";
+    output += values
+      .map(
+        (value) =>
+          `<Cell><Data ss:Type="String">${escapeXml(value)}</Data></Cell>`
+      )
+      .join("");
+
+    output += `</Row>`;
   }
 
   output += `
@@ -292,14 +355,16 @@ function createXLS(rows) {
   return output;
 }
 
+/* ---------------------------------
+   ANA ROUTER
+--------------------------------- */
+
 async function route(req, env) {
   const url = new URL(req.url);
   const path = url.pathname;
   const method = req.method;
 
-  /*
-   * Sağlık kontrolü
-   */
+  /* Sağlık kontrolü */
   if (method === "GET" && path === "/api/health") {
     return json({
       ok: true,
@@ -307,46 +372,59 @@ async function route(req, env) {
     });
   }
 
-  /*
-   * İlk açılışta örnek öğrencileri ekle
-   */
+  /* Veritabanını hazırla */
   await ensureSeed(env);
 
-  /*
-   * ÖĞRENCİLER
-   */
+  /* ---------------------------------
+     PUBLIC - ÖĞRENCİLER
+  --------------------------------- */
+
   if (method === "GET" && path === "/api/students") {
     return json(await getStudents(env));
   }
 
-  /*
-   * NOTLAR
-   *
-   * Normal kullanıcı:
-   * sadece approved kayıtları görür.
-   *
-   * Admin:
-   * tüm kayıtları görür.
-   */
+  /* ---------------------------------
+     PUBLIC - ONAYLANMIŞ ANDAÇLAR
+  --------------------------------- */
+
   if (method === "GET" && path === "/api/notes") {
-    const admin = isAdmin(req);
+    const admin = isAdmin(req, env);
+
+    /*
+      Admin değilse sadece approved döner.
+      Admin ise tüm kayıtları görebilir.
+    */
+    if (!admin) {
+      const status = url.searchParams.get("status");
+
+      /*
+        Frontend public tarafta zaten
+        ?status=approved gönderiyor.
+      */
+      if (status !== "approved") {
+        return json(
+          {
+            error: "Yetkisiz"
+          },
+          401
+        );
+      }
+    }
 
     return json(
       await getNotes(env, url, admin)
     );
   }
 
-  /*
-   * YENİ ANDAÇ
-   */
+  /* ---------------------------------
+     PUBLIC - ANDAÇ GÖNDER
+  --------------------------------- */
+
   if (method === "POST" && path === "/api/notes") {
     const data = await body(req);
 
     const studentId = Number(data.student_id);
 
-    /*
-     * Frontend'in eski ve yeni isimlerini de destekle
-     */
     const writerName = String(
       data.writer_name ||
       data.author_name ||
@@ -364,33 +442,48 @@ async function route(req, env) {
     ).trim();
 
     if (!studentId) {
-      return json({
-        error: "Öğrenci seçilmedi."
-      }, 400);
+      return json(
+        {
+          error: "Öğrenci seçilmedi."
+        },
+        400
+      );
     }
 
     if (!writerName) {
-      return json({
-        error: "Adını yazmalısın."
-      }, 400);
+      return json(
+        {
+          error: "Adınızı yazın."
+        },
+        400
+      );
     }
 
-    if (!relationship) {
-      return json({
-        error: "İlişki bilgisi gerekli."
-      }, 400);
+    if (!content) {
+      return json(
+        {
+          error: "Andaç yazısı boş bırakılamaz."
+        },
+        400
+      );
     }
 
     if (content.length < 20) {
-      return json({
-        error: "Andaç yazısı en az 20 karakter olmalıdır."
-      }, 400);
+      return json(
+        {
+          error: "Andaç yazısı en az 20 karakter olmalı."
+        },
+        400
+      );
     }
 
     if (content.length > 600) {
-      return json({
-        error: "Andaç yazısı en fazla 600 karakter olabilir."
-      }, 400);
+      return json(
+        {
+          error: "Andaç yazısı en fazla 600 karakter olabilir."
+        },
+        400
+      );
     }
 
     const student = await env.ANDAC_DB
@@ -403,10 +496,15 @@ async function route(req, env) {
       .first();
 
     if (!student) {
-      return json({
-        error: "Öğrenci bulunamadı."
-      }, 404);
+      return json(
+        {
+          error: "Öğrenci bulunamadı."
+        },
+        404
+      );
     }
+
+    const createdAt = new Date().toISOString();
 
     const result = await env.ANDAC_DB
       .prepare(`
@@ -419,62 +517,65 @@ async function route(req, env) {
           status,
           created_at
         )
-        VALUES (?, ?, ?, ?, 'pending', CURRENT_TIMESTAMP)
+        VALUES (?, ?, ?, ?, ?, ?)
       `)
       .bind(
         studentId,
         writerName,
         relationship,
-        content
+        content,
+        "pending",
+        createdAt
       )
       .run();
 
     return json({
       ok: true,
-      id: result.meta?.last_row_id || null,
+      id: result.meta.last_row_id,
       message: "Andaçınız başarıyla gönderildi."
     });
   }
 
-  /*
-   * FOTOĞRAFÇI GİRİŞİ
-   *
-   * PIN = 2468
-   */
-  if (
-    method === "POST" &&
-    path === "/api/admin/login"
-  ) {
+  /* ---------------------------------
+     ADMIN LOGIN
+  --------------------------------- */
+
+  if (method === "POST" && path === "/api/admin/login") {
     const data = await body(req);
 
-    const pin = String(
-      data.pin || ""
-    ).trim();
+    const pin = String(data.pin || "");
 
-    if (pin === ADMIN_PIN) {
+    if (pin === getAdminPin(env)) {
       return json({
-        ok: true,
-        message: "Giriş başarılı."
+        ok: true
       });
     }
 
-    return json({
-      error: "PIN hatalı"
-    }, 401);
+    return json(
+      {
+        error: "PIN hatalı"
+      },
+      401
+    );
   }
 
-  /*
-   * BURADAN SONRASI ADMIN
-   */
-  if (path.startsWith("/api/") && !isAdmin(req)) {
-    return json({
-      error: "Yetkisiz"
-    }, 401);
+  /* ---------------------------------
+     ADMIN KONTROLÜ
+  --------------------------------- */
+
+  if (path.startsWith("/api/") && !isAdmin(req, env)) {
+    return json(
+      {
+        error: "Yetkisiz"
+      },
+      401
+    );
   }
 
-  /*
-   * ANDAÇ DURUMU DEĞİŞTİR
-   */
+  /* ---------------------------------
+     ADMIN - ANDAÇ DURUMU DEĞİŞTİR
+  --------------------------------- */
+
   if (
     method === "PATCH" &&
     path.startsWith("/api/notes/")
@@ -483,94 +584,43 @@ async function route(req, env) {
       path.split("/").pop()
     );
 
-    if (!id) {
-      return json({
-        error: "Geçersiz andaç ID."
-      }, 400);
-    }
-
     const data = await body(req);
 
-    const updates = [];
-    const values = [];
+    const status = String(
+      data.status || ""
+    );
 
-    if (data.writer_name !== undefined) {
-      updates.push("writer_name = ?");
-      values.push(
-        String(data.writer_name).trim()
-      );
-    }
-
-    if (data.relationship !== undefined) {
-      updates.push("relationship = ?");
-      values.push(
-        String(data.relationship).trim()
-      );
-    }
-
-    if (data.content !== undefined) {
-      const content = String(data.content).trim();
-
-      if (content.length > 600) {
-        return json({
-          error: "Andaç yazısı en fazla 600 karakter olabilir."
-        }, 400);
-      }
-
-      updates.push("content = ?");
-      values.push(content);
-    }
-
-    if (data.status !== undefined) {
-      const status = String(data.status);
-
-      if (
-        ![
-          "pending",
-          "approved",
-          "rejected"
-        ].includes(status)
-      ) {
-        return json({
+    if (
+      !["pending", "approved", "rejected"].includes(
+        status
+      )
+    ) {
+      return json(
+        {
           error: "Geçersiz durum."
-        }, 400);
-      }
-
-      updates.push("status = ?");
-      values.push(status);
+        },
+        400
+      );
     }
 
-    if (!updates.length) {
-      return json({
-        error: "Güncellenecek alan yok."
-      }, 400);
-    }
-
-    values.push(id);
-
-    const result = await env.ANDAC_DB
+    await env.ANDAC_DB
       .prepare(`
         UPDATE notes
-        SET ${updates.join(", ")}
+        SET status = ?
         WHERE id = ?
       `)
-      .bind(...values)
+      .bind(status, id)
       .run();
-
-    if (!result.meta?.changes) {
-      return json({
-        error: "Andaç bulunamadı."
-      }, 404);
-    }
 
     return json({
       ok: true
     });
   }
 
-  /*
-   * ANDAÇ SİL
-   */
+  /* ---------------------------------
+     ADMIN - ANDAÇ SİL
+  --------------------------------- */
+
   if (
     method === "DELETE" &&
     path.startsWith("/api/notes/")
@@ -579,13 +629,7 @@ async function route(req, env) {
       path.split("/").pop()
     );
 
-    if (!id) {
-      return json({
-        error: "Geçersiz andaç ID."
-      }, 400);
-    }
-
-    const result = await env.ANDAC_DB
+    await env.ANDAC_DB
       .prepare(`
         DELETE FROM notes
         WHERE id = ?
@@ -593,24 +637,108 @@ async function route(req, env) {
       .bind(id)
       .run();
 
-    if (!result.meta?.changes) {
-      return json({
-        error: "Andaç bulunamadı."
-      }, 404);
-    }
-
     return json({
       ok: true
     });
   }
 
-  /*
-   * YENİ ÖĞRENCİ
-   */
+  /* ---------------------------------
+     ADMIN - YENİ ÖĞRENCİ
+  --------------------------------- */
+
   if (
     method === "POST" &&
     path === "/api/students"
   ) {
+    const data = await body(req);
+
+    const name = String(
+      data.name || ""
+    ).trim();
+
+    const className = String(
+      data.class_name ||
+      data.className ||
+      ""
+    ).trim();
+
+    const motto = String(
+      data.motto || ""
+    ).trim();
+
+    /*
+      photo_url sadece dışarıdan gelen eski
+      form verisi için alternatif isimdir.
+      D1 sütunu kesinlikle PHOTO'dur.
+    */
+    const photo = String(
+      data.photo ||
+      data.photo_url ||
+      data.photoUrl ||
+      ""
+    ).trim();
+
+    const target = Number(
+      data.target || 5
+    );
+
+    if (!name) {
+      return json(
+        {
+          error: "Öğrenci adı gerekli."
+        },
+        400
+      );
+    }
+
+    if (!className) {
+      return json(
+        {
+          error: "Sınıf gerekli."
+        },
+        400
+      );
+    }
+
+    const result = await env.ANDAC_DB
+      .prepare(`
+        INSERT INTO students
+        (
+          name,
+          class_name,
+          motto,
+          photo,
+          target
+        )
+        VALUES (?, ?, ?, ?, ?)
+      `)
+      .bind(
+        name,
+        className,
+        motto,
+        photo,
+        target
+      )
+      .run();
+
+    return json({
+      ok: true,
+      id: result.meta.last_row_id
+    });
+  }
+
+  /* ---------------------------------
+     ADMIN - ÖĞRENCİ GÜNCELLE
+  --------------------------------- */
+
+  if (
+    method === "PATCH" &&
+    path.startsWith("/api/students/")
+  ) {
+    const id = Number(
+      path.split("/").pop()
+    );
+
     const data = await body(req);
 
     const name = String(
@@ -638,48 +766,45 @@ async function route(req, env) {
       data.target || 5
     );
 
-    if (!name) {
-      return json({
-        error: "Öğrenci adı gerekli."
-      }, 400);
+    if (!name || !className) {
+      return json(
+        {
+          error: "Ad ve sınıf zorunlu."
+        },
+        400
+      );
     }
 
-    if (!className) {
-      return json({
-        error: "Sınıf gerekli."
-      }, 400);
-    }
-
-    const result = await env.ANDAC_DB
+    await env.ANDAC_DB
       .prepare(`
-        INSERT INTO students
-        (
-          name,
-          class_name,
-          motto,
-          photo,
-          target
-        )
-        VALUES (?, ?, ?, ?, ?)
+        UPDATE students
+        SET
+          name = ?,
+          class_name = ?,
+          motto = ?,
+          photo = ?,
+          target = ?
+        WHERE id = ?
       `)
       .bind(
         name,
         className,
         motto,
         photo,
-        target
+        target,
+        id
       )
       .run();
 
     return json({
-      ok: true,
-      id: result.meta?.last_row_id || null
+      ok: true
     });
   }
 
-  /*
-   * ÖĞRENCİ SİL
-   */
+  /* ---------------------------------
+     ADMIN - ÖĞRENCİ SİL
+  --------------------------------- */
+
   if (
     method === "DELETE" &&
     path.startsWith("/api/students/")
@@ -688,11 +813,10 @@ async function route(req, env) {
       path.split("/").pop()
     );
 
-    if (!id) {
-      return json({
-        error: "Geçersiz öğrenci ID."
-      }, 400);
-    }
+    /*
+      Önce öğrencinin andaçlarını siliyoruz.
+      Böylece foreign key problemi oluşmaz.
+    */
 
     await env.ANDAC_DB
       .prepare(`
@@ -702,7 +826,7 @@ async function route(req, env) {
       .bind(id)
       .run();
 
-    const result = await env.ANDAC_DB
+    await env.ANDAC_DB
       .prepare(`
         DELETE FROM students
         WHERE id = ?
@@ -710,20 +834,15 @@ async function route(req, env) {
       .bind(id)
       .run();
 
-    if (!result.meta?.changes) {
-      return json({
-        error: "Öğrenci bulunamadı."
-      }, 404);
-    }
-
     return json({
       ok: true
     });
   }
 
-  /*
-   * CSV
-   */
+  /* ---------------------------------
+     ADMIN - CSV
+  --------------------------------- */
+
   if (
     method === "GET" &&
     path === "/api/export.csv"
@@ -735,25 +854,23 @@ async function route(req, env) {
     );
 
     return new Response(
-      createCSV(rows),
+      makeCsv(rows),
       {
         headers: {
           "content-type":
             "text/csv; charset=utf-8",
 
           "content-disposition":
-            'attachment; filename="andaclar.csv"',
-
-          "cache-control":
-            "no-store"
+            'attachment; filename="andaclar.csv"'
         }
       }
     );
   }
 
-  /*
-   * EXCEL
-   */
+  /* ---------------------------------
+     ADMIN - EXCEL
+  --------------------------------- */
+
   if (
     method === "GET" &&
     path === "/api/export.xls"
@@ -765,42 +882,46 @@ async function route(req, env) {
     );
 
     return new Response(
-      createXLS(rows),
+      makeExcel(rows),
       {
         headers: {
           "content-type":
             "application/vnd.ms-excel; charset=utf-8",
 
           "content-disposition":
-            'attachment; filename="andaclar.xls"',
-
-          "cache-control":
-            "no-store"
+            'attachment; filename="andaclar.xls"'
         }
       }
     );
   }
 
-  /*
-   * FRONTEND
-   */
+  /* ---------------------------------
+     FRONTEND
+  --------------------------------- */
+
   return env.ASSETS.fetch(req);
 }
+
+/* ---------------------------------
+   WORKER
+--------------------------------- */
 
 export default {
   async fetch(req, env, ctx) {
     try {
       return await route(req, env);
     } catch (error) {
-      console.error(
-        "ANDAÇ DEFTERİ SERVER ERROR:",
-        error
-      );
+      console.error("WORKER ERROR:", error);
 
-      return json({
-        error: "Sunucu hatası",
-        detail: error?.message || String(error)
-      }, 500);
+      return json(
+        {
+          error: "Sunucu hatası",
+          detail: String(
+            error?.message || error
+          )
+        },
+        500
+      );
     }
   }
 };
