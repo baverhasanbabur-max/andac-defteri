@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Andaç Defteri | Mezuniyet Albümü</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div id="toast" class="toast"></div>
+<header class="nav"><div class="brand"><span class="brandmark">A</span><span>Andaç Defteri</span></div>
+<div class="nav-actions"><button class="ghost" onclick="openAbout()">Nasıl çalışır?</button><button class="admin-link" onclick="showAdminLogin()">Fotoğrafçı Girişi</button></div></header>
+
+<main id="public">
+<section class="hero">
+<div class="hero-copy"><div class="eyebrow">MEZUNİYET ALBÜMÜ · 2026</div>
+<h1>Birbirinize<br><em>güzel bir iz</em> bırakın.</h1>
+<p>Arkadaşların hakkında unutmak istemediğin bir anıyı, bir cümleyi veya içinden geçen güzel sözleri yaz. Fotoğrafçı onayladıktan sonra bu anılar albümünüzün bir parçası olacak.</p>
+<div class="hero-badge">✦ Fotoğrafçı Stüdyosu Andaç Sistemi</div></div>
+<div class="hero-photo"><img src="https://images.unsplash.com/photo-1549057446-9f5c6ac91a04?auto=format&fit=crop&w=1000&q=85"><div class="photo-caption">12. sınıf · Birlikte geçen yıllar</div></div>
+</section>
+
+<section class="toolbar"><div><span class="eyebrow">SINIF ARŞİVİ</span><h2>Arkadaşını bul, anını bırak.</h2></div>
+<div class="controls"><input id="search" data-testid="student-search-input" placeholder="İsim ara…" oninput="renderStudents()"><select id="classFilter" data-testid="class-filter-select" onchange="renderStudents()"><option value="all">Tüm sınıflar</option></select></div></section>
+<div id="studentGrid" class="grid"></div>
+</main>
+
+<main id="admin" class="hidden"></main>
+
+<div id="modal" class="modal hidden"><div class="backdrop" onclick="closeModal()"></div><div class="dialog" id="dialog"></div></div>
+<script src="/app.js"></script>
+</body></html>

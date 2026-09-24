@@ -1,0 +1,12 @@
+{
+  "name": "andac-defteri-cloudflare",
+  "version": "2.0.0",
+  "private": true,
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "db:init": "wrangler d1 execute ANDAC_DB --remote --file=schema.sql"
+  },
+  "devDependencies": {
+    "wrangler": "^4.33.1"
+  }
+}
