@@ -91,7 +91,7 @@ async function body(req) {
 }
 
 function getAdminPin(env) {
-const ADMIN_PIN = "2468"; // v3
+  return String(env.ADMIN_PIN || "2468");
 }
 
 function isAdmin(req, env) {
